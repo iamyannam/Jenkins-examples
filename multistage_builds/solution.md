@@ -16,20 +16,21 @@
 **Pipeline.sh**
 -------------
 ```
-    pipeline {
+pipeline {
     agent {
-        label 'stapp01' // Restricts execution specifically to App Server 1
+        node {
+            label 'stapp01'
+        }
     }
 
     stages {
         stage('Deploy') {
             steps {
-                echo 'Starting deployment...'
+                echo 'Deploying latest code from Gitea repository...'
                 dir('/var/www/html') {
-                    // Changed branch from 'main' to 'master' based on standard lab defaults
-                    git branch: 'master', url: 'https://3000-port-7pxwlgtv7y2ljk5c.labs.kodekloud.com/sarah/web.git'
+                    // Pull the latest changes pushed in step 2
+                    sh 'git pull origin master'
                 }
-                echo 'Deployment completed successfully.'
             }
         }
 
@@ -37,8 +38,10 @@
             steps {
                 echo 'Testing application accessibility via Load Balancer...'
                 script {
-                    // Test if the website is accessible via the Load Balancer
-                    sh 'curl -f --retry 3 http://stlb01:8091'
+                    // -f makes curl fail silently on server errors (4xx/5xx)
+                    // -s suppresses the progress meter
+                    // -S ensures error messages are still shown if it fails
+                    sh 'curl -f -s -S http://stlb01:8091'
                 }
             }
         }
@@ -46,7 +49,7 @@
     
     post {
         failure {
-            echo 'Pipeline failed. Please check the logs above for deployment or testing errors.'
+            echo 'Pipeline failed. Please check the deployment or application status.'
         }
         success {
             echo 'Pipeline completed successfully!'
